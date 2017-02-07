@@ -6,7 +6,7 @@ end
 
 describe Ravelin::Event do
   let(:event) do
-    described_class.new(name: :ping, timestamp: 12345, payload: {})
+    described_class.new(:ping, {}, 12345)
   end
 
   describe '#serializable_hash' do
@@ -41,7 +41,7 @@ describe Ravelin::Event do
     context 'customer presence required' do
       it 'throws ArgumentError with no customer_id or temp_customer_id' do
         expect {
-          described_class.new(name: :order, payload: {})
+          described_class.new(:order, {})
         }.to raise_exception(
           ArgumentError,
           /payload missing customer_id or temp_customer_id/
@@ -50,13 +50,13 @@ describe Ravelin::Event do
 
       it 'accepts customer_id' do
         expect {
-          described_class.new(name: :order, payload: { customer_id: 1 })
+          described_class.new(:order, { customer_id: 1 })
         }.to_not raise_exception
       end
 
       it 'accepts temp_customer_id' do
         expect {
-          described_class.new(name: :order, payload: { temp_customer_id: 2 })
+          described_class.new(:order, { temp_customer_id: 2 })
         }.to_not raise_exception
       end
     end
@@ -64,7 +64,7 @@ describe Ravelin::Event do
     context 'payload parameters required' do
       it 'throws ArgumentError with missing payload parameters' do
         expect {
-          described_class.new(name: :customer, payload: {})
+          described_class.new(:customer, {})
         }.to raise_exception(
           ArgumentError,
           /payload missing parameters: customer/
@@ -73,10 +73,7 @@ describe Ravelin::Event do
 
       it 'is executed cleanly with required payload parameters' do
         expect {
-          described_class.new(
-            name: :customer,
-            payload: { customer: { customer_id: 123 } }
-          )
+          described_class.new(:customer, { customer: { customer_id: 123 } })
         }.to_not raise_exception
       end
     end
@@ -84,7 +81,7 @@ describe Ravelin::Event do
 
   describe '#convert_to_epoch' do
     let(:event) do
-      described_class.new(name: :ping, payload: {}, timestamp: timestamp)
+      described_class.new(:ping, {}, timestamp)
     end
 
     context 'Time argument' do
@@ -128,7 +125,7 @@ describe Ravelin::Event do
 
   describe '#convert_to_ravelin_objects' do
     let(:event) do
-      described_class.new(name: :ping, timestamp: 12345, payload: payload)
+      described_class.new(:ping, payload, 12345)
     end
 
     before do

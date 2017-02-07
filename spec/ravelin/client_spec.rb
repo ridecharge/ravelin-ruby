@@ -11,7 +11,7 @@ describe Ravelin::Client do
   end
 
   shared_context 'event setup and stubbing' do
-    let(:client) { described_class.new(api_key: 'abc') }
+    let(:client) { described_class.new('abc') }
     let(:event_name) { 'foobar' }
     let(:event_payload) { { id: 'ch-123' } }
     let(:event) do
@@ -26,7 +26,7 @@ describe Ravelin::Client do
 
     it 'creates an event with method arguments' do
       expect(Ravelin::Event).to receive(:new).
-        with(name: 'foo', timestamp: 12345, payload: { key: 'value' }).
+        with('foo', { key: 'value' }, 12345).
         and_return(event)
 
       client.send_event(
@@ -66,7 +66,7 @@ describe Ravelin::Client do
 
     it 'creates an event with method arguments' do
       expect(Ravelin::Event).to receive(:new).
-        with(name: 'foo', timestamp: 12345, payload: { key: 'value' }).
+        with('foo', { key: 'value' }, 12345).
         and_return(event)
 
       client.send_backfill_event(
@@ -92,7 +92,7 @@ describe Ravelin::Client do
   end
 
   describe '#post' do
-    let(:client) { described_class.new(api_key: 'abc') }
+    let(:client) { described_class.new('abc') }
     let(:event) do
       double('event', name: 'ping', serializable_hash: { name: 'value' })
     end

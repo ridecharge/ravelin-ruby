@@ -11,7 +11,7 @@ module Ravelin
   class Client
     API_BASE = 'https://api.ravelin.com'
 
-    def initialize(api_key:)
+    def initialize(api_key)
       @api_key = api_key
 
       @connection = Faraday.new(API_BASE, faraday_options) do |conn|
@@ -20,21 +20,21 @@ module Ravelin
       end
     end
 
-    def send_event(**args)
+    def send_event(args={})
       score = args.delete(:score)
-      event = Event.new(**args)
+      event = Event.new(args[:name], args[:payload], args[:timestamp])
 
       score_param = score ? "?score=true" : nil
 
       post("/v2/#{event.name}#{score_param}", event.serializable_hash)
     end
 
-    def send_backfill_event(**args)
+    def send_backfill_event(args={})
       unless args.has_key?(:timestamp)
         raise ArgumentError.new('missing parameters: timestamp')
       end
 
-      event = Event.new(**args)
+      event = Event.new(args[:name], args[:payload], args[:timestamp])
 
       post("/v2/backfill/#{event.name}", event.serializable_hash)
     end

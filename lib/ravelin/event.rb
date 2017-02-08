@@ -2,7 +2,7 @@ module Ravelin
   class Event
     attr_accessor :name, :timestamp, :payload
 
-    def initialize(name:, payload:, timestamp: nil)
+    def initialize(name, payload, timestamp = nil)
       @name = convert_event_name(name)
       @payload = convert_to_ravelin_objects(payload)
       @timestamp = timestamp.nil? ? Time.now.to_i : convert_to_epoch(timestamp)
@@ -78,7 +78,7 @@ module Ravelin
     end
 
     def payload_customer_reference_present?
-      self.payload.keys.any? {|k| %i(customer_id temp_customer_id).include? k }
+      self.payload.keys.any? {|k| [:customer_id, :temp_customer_id].include?(k) }
     end
 
     def convert_to_epoch(val)

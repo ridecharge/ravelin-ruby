@@ -11,7 +11,7 @@ describe Ravelin::Client do
   end
 
   shared_context 'event setup and stubbing' do
-    let(:client) { described_class.new('abc') }
+    let(:client) { described_class.new(api_key: 'abc') }
     let(:event_name) { 'foobar' }
     let(:event_payload) { { id: 'ch-123' } }
     let(:event) do
@@ -92,7 +92,7 @@ describe Ravelin::Client do
   end
 
   describe '#post' do
-    let(:client) { described_class.new('abc') }
+    let(:client) { described_class.new(api_key: 'abc') }
     let(:event) do
       double('event', name: 'ping', serializable_hash: { name: 'value' })
     end

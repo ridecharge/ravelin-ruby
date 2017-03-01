@@ -22,6 +22,6 @@ module Ravelin
       :email,
       :custom
 
-    attr_required :payment_method_id, :method_type
+    attr_required :payment_method_id
   end
 end

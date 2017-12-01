@@ -7,6 +7,7 @@ module Ravelin
       :active,
       :registration_time,
       # Only when type = card
+      :billing_address,
       :instrument_id,
       :name_on_card,
       :card_bin,
@@ -23,5 +24,16 @@ module Ravelin
       :custom
 
     attr_required :payment_method_id
+    
+    def initialize(params)
+      if address = (params.delete(:billing_address) || params.delete("billing_address"))
+        if address.is_a?(Hash)
+          self.billing_address = Location.new(address)
+        elsif address.is_a?(Location)
+          self.billing_address = address
+        end
+      end
+      super(params)
+    end
   end
 end

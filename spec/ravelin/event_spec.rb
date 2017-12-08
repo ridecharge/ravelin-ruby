@@ -82,6 +82,100 @@ describe Ravelin::Event do
         }.to_not raise_exception
       end
     end
+
+    context '3ds support' do
+      let(:event) { described_class.new(name: :transaction, payload: payload) }
+      let(:timestamp) { Time.now.to_i }
+      let(:three_d_secure) do
+        {
+          attempted:  true,
+          success:    true,
+          start_time: timestamp,
+          end_time:   timestamp
+        }
+      end
+      let(:payload) do
+        {
+          customer_id: 123,
+          payment_method_id: 123,
+          order_id: 123,
+          transaction: {
+            transaction_id: 123,
+            currency: 'GBP',
+            debit: 100,
+            credit: 0,
+            gateway: 'stripe',
+            gateway_reference: 123,
+            success: true,
+            '3ds' => three_d_secure
+          }
+        }
+      end
+
+      it '3ds is included in the output' do
+        serialized_transaction = event.serializable_hash['transaction']
+        serialized_three_d_secure = {
+          '3ds' =>  {
+            'attempted' => true,
+            'success'   => true,
+            'startTime' => timestamp,
+            'endTime'   => timestamp,
+            'timedOut'  => false
+          }
+        }
+        expect(serialized_transaction).to include(serialized_three_d_secure)
+      end
+    end
+
+    context 'required mutually exclusive params' do
+      let(:payload) do
+        {
+          customer_id: 123,
+          payment_method_id: 123,
+          payment_method: {
+            payment_method_id: 123,
+            method_type: 'card'
+          },
+          order_id: 321
+        }
+      end
+
+      it 'throws ArgumentError when both are present' do
+        expect {
+          described_class.new(name: :transaction, payload: payload)
+        }.to raise_exception(
+          ArgumentError,
+          /parameters are mutally exclusive: payment_method_id, payment_method/
+        )
+      end
+
+      it 'throws ArgumentError when neither are present' do
+        payload_modified = payload.dup.tap do |p|
+          p.delete(:payment_method_id)
+          p.delete(:payment_method)
+        end
+
+        expect {
+          described_class.new(name: :transaction, payload: payload_modified)
+        }.to raise_exception(
+          ArgumentError,
+          /payload must include one of: payment_method_id, payment_method/
+        )
+      end
+
+      it 'is valid when one of the mutally exclusive keys is present' do
+        [:payment_method, :payment_method_id].each do |key_to_remove|
+          payload.dup.tap do |p|
+            p.delete(key_to_remove)
+
+            expect {
+              described_class.new(name: :transaction, payload: p)
+            }.not_to raise_exception
+          end
+        end
+
+      end
+    end
   end
 
   describe '#convert_to_epoch' do

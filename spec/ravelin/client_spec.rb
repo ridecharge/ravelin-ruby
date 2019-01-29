@@ -10,8 +10,9 @@ describe Ravelin::Client do
     end
   end
 
+  let(:client) { described_class.new(api_key: 'abc') }
+
   shared_context 'event setup and stubbing' do
-    let(:client) { described_class.new(api_key: 'abc') }
     let(:event_name) { 'foobar' }
     let(:event_payload) { { id: 'ch-123' } }
     let(:event) do
@@ -19,6 +20,18 @@ describe Ravelin::Client do
     end
 
     before { allow(client).to receive(:post) }
+  end
+
+  shared_context 'tag setup and stubbing' do
+    let(:tag_name) { :tagname }
+    let(:tag_payload) { { "customerId" => '123', "tagNames" => ['foo', 'bar'] } }
+    let(:tag) do
+      double('tag', name: tag_name, serializable_hash: tag_payload)
+    end
+
+    before { allow(client).to receive(:post) }
+    before { allow(client).to receive(:delete) }
+    before { allow(client).to receive(:get) }
   end
 
   describe '#send_event' do
@@ -91,6 +104,69 @@ describe Ravelin::Client do
     end
   end
 
+  describe '#send_tag' do
+    include_context 'tag setup and stubbing'
+
+    it 'creates a tag with method arguments' do
+      expect(Ravelin::Tag).to receive(:new).
+          with(payload: {:tagNames=>['foo', 'bar']}).
+          and_return(tag)
+
+      client.send_tag(
+          payload: { tagNames: ['foo', 'bar'] }
+      )
+    end
+
+    it 'calls #post with Tag payload' do
+      allow(Ravelin::Tag).to receive(:new) { tag }
+
+      expect(client).to receive(:post).with('/v2/tag/customer',
+          {
+              "customerId" => '123',
+              "tagNames" => ['foo', 'bar']
+          }
+      )
+
+      client.send_tag
+    end
+  end
+
+  describe '#delete_tag' do
+    include_context 'tag setup and stubbing'
+
+    context 'when deleting one tag' do
+      let(:tag_payload) { { "customerId" => '123', "tagNames" => ['foo'] } }
+
+      it 'calls #delete with Tag payload' do
+        allow(Ravelin::Tag).to receive(:new) { tag }
+        expect(client).to receive(:delete).with('/v2/tag/customer?customerId=123&tagName=foo')
+        client.delete_tag
+      end
+    end
+
+    context 'when deleting multiple tags' do
+      it 'calls #delete with Tag payload' do
+        allow(Ravelin::Tag).to receive(:new) { tag }
+        expect(client).to receive(:delete).with('/v2/tag/customer?customerId=123&tagName=foo,bar')
+        client.delete_tag
+      end
+    end
+  end
+
+  describe '#get_tag' do
+    include_context 'tag setup and stubbing'
+
+    context 'when deleting one tag' do
+      let(:tag_payload) { { "customerId" => '123' } }
+
+      it 'calls #get with customer id' do
+        allow(Ravelin::Tag).to receive(:new) { tag }
+        expect(client).to receive(:get).with('/v2/tag/customer/123')
+        client.get_tag
+      end
+    end
+  end
+
   describe '#post' do
     let(:client) { described_class.new(api_key: 'abc') }
     let(:event) do
@@ -154,12 +230,155 @@ describe Ravelin::Client do
       context 'error' do
         let(:response_status) { 400 }
         let(:body) { '{}' }
-        
         it 'handles error response' do
           expect(client).to receive(:handle_error_response).
             with(kind_of(Faraday::Response))
 
           client.send_event
+        end
+      end
+    end
+  end
+
+  describe '#delete' do
+    let(:client) { described_class.new(api_key: 'abc') }
+    let(:tag) do
+      double('tag', name: 'ping', serializable_hash: { "customerId" => '123', "tagNames" => ['foo', 'bar'] })
+    end
+
+    before do
+      allow(Ravelin::Tag).to receive(:new).and_return(tag)
+    end
+
+    it 'calls Ravelin with correct headers and body' do
+      stub = stub_request(:delete, 'https://api.ravelin.com/v2/tag/customer?customerId=123&tagName=foo,bar').
+          with(
+              headers: { 'Authorization' => 'token abc' }
+          ).and_return(
+          headers: { 'Content-Type' => 'application/json' },
+          body: '{}'
+      )
+
+      client.delete_tag
+
+      expect(stub).to have_been_requested
+    end
+
+    context 'response' do
+      before do
+        stub_request(:delete, 'https://api.ravelin.com/v2/tag/customer?customerId=123&tagName=foo,bar').
+            to_return(
+                status: response_status,
+                body: body
+            )
+      end
+
+      context 'successful' do
+        shared_examples 'successful request' do
+          it 'returns the response' do
+            expect(client.delete_tag).to be_a(Ravelin::Response)
+          end
+
+          it "not treated as an error" do
+            expect(client).to_not receive(:handle_error_response)
+
+            client.delete_tag
+          end
+        end
+
+        context 'when the response code is 200' do
+          let(:response_status) { 200 }
+          let(:body) { '{}' }
+          it_behaves_like 'successful request'
+        end
+
+        context 'when the response code is 200' do
+          let(:response_status) { 204 }
+          let(:body) { '' }
+          it_behaves_like 'successful request'
+        end
+      end
+
+      context 'error' do
+        let(:response_status) { 400 }
+        let(:body) { '{}' }
+        it 'handles error response' do
+          expect(client).to receive(:handle_error_response).
+              with(kind_of(Faraday::Response))
+
+          client.delete_tag
+        end
+      end
+    end
+  end
+
+  describe '#get' do
+    let(:client) { described_class.new(api_key: 'abc') }
+    let(:tag) do
+      double('tag', name: 'ping', serializable_hash: { "customerId" => '123', "tagNames" => ['foo', 'bar'] })
+    end
+
+    before do
+      allow(Ravelin::Tag).to receive(:new).and_return(tag)
+    end
+
+    it 'calls Ravelin with correct headers and body' do
+      stub = stub_request(:get, 'https://api.ravelin.com/v2/tag/customer/123').
+          with(
+              headers: { 'Authorization' => 'token abc' }
+          ).and_return(
+          headers: { 'Content-Type' => 'application/json' },
+          body: '{}'
+      )
+
+      client.get_tag
+
+      expect(stub).to have_been_requested
+    end
+
+    context 'response' do
+      before do
+        stub_request(:get, 'https://api.ravelin.com/v2/tag/customer/123').
+            to_return(
+                status: response_status,
+                body: body
+            )
+      end
+
+      context 'successful' do
+        shared_examples 'successful request' do
+          it 'returns the response' do
+            expect(client.get_tag).to be_a(Ravelin::Response)
+          end
+
+          it "not treated as an error" do
+            expect(client).to_not receive(:handle_error_response)
+
+            client.get_tag
+          end
+        end
+
+        context 'when the response code is 200' do
+          let(:response_status) { 200 }
+          let(:body) { '{}' }
+          it_behaves_like 'successful request'
+        end
+
+        context 'when the response code is 200' do
+          let(:response_status) { 204 }
+          let(:body) { '' }
+          it_behaves_like 'successful request'
+        end
+      end
+
+      context 'error' do
+        let(:response_status) { 400 }
+        let(:body) { '{}' }
+        it 'handles error response' do
+          expect(client).to receive(:handle_error_response).
+              with(kind_of(Faraday::Response))
+
+          client.get_tag
         end
       end
     end
@@ -183,7 +402,6 @@ describe Ravelin::Client do
       end
     end
   end
-
 
   describe '#handle_error_response' do
     shared_examples 'raises error with' do |error_class|

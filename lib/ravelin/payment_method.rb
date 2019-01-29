@@ -21,7 +21,8 @@ module Ravelin
       :country_issued,
       # Only when type = paypal
       :email,
-      :custom
+      :custom,
+      :e_wallet
 
     attr_required :payment_method_id
     
